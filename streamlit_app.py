@@ -15,3 +15,6 @@ if st.button("Ask!", disabled=(len(prompt)==0)):
     )
 
     st.write(response.output_text)
+===========
+## requirement.txt
+openai
