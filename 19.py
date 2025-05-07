@@ -1,15 +1,12 @@
 import streamlit as st
 import openai
 
-# 페이지 설정
-st.set_page_config(page_title="국립부경대학교 도서관 챗봇", page_icon="📚")
-
 # API 키 입력
 api_key = st.sidebar.text_input("🔑 OpenAI API Key", type="password")
 
 # API 키 없으면 종료
 if not api_key:
-    st.warning("API Key를 입력하세요.")
+    st.warning("API Key를 입력하세요")
     st.stop()
 
 openai.api_key = api_key
@@ -446,7 +443,7 @@ if prompt := st.chat_input("도서관 규정에 대해 질문해 주세요!"):
 
     # 규정집 내용에 대한 답변 생성
     response = openai.ChatCompletion.create(
-        model="gpt-4",  # 혹은 "gpt-3.5-turbo"
+        model="gpt-4",  # 사용하려는 모델, gpt-3.5-turbo 또는 gpt-4로 지정
         messages=st.session_state.messages + [
             {"role": "system", "content": library_rules}  # 규정집 내용 제공
         ]
@@ -465,5 +462,4 @@ if st.sidebar.button("🧹 초기화"):
     st.session_state.messages = [
         {"role": "system", "content": "당신은 국립부경대학교 도서관 챗봇입니다. 도서관 규정에 대해 답변할 수 있습니다."}
     ]
-    st.experimental_rerun()  # 페이지 리로딩
-
+    st.rerun()  # 페이지 리로딩을 위한 올바른 함수
