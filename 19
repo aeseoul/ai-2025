@@ -1,69 +1,54 @@
 import streamlit as st
 import openai
 
-# --- 페이지 설정 ---
+# 페이지 설정
 st.set_page_config(page_title="GPT Chat", page_icon="💬")
 
-# --- API Key 입력 ---
-def get_api_key():
-    if "api_key" not in st.session_state:
-        st.session_state.api_key = ""
-    return st.text_input("🔑 OpenAI API Key", type="password", value=st.session_state.api_key)
+# API 키 입력
+api_key = st.sidebar.text_input("🔑 OpenAI API Key", type="password")
 
-# --- Chat 초기 메시지 세팅 ---
-def init_chat():
-    if "messages" not in st.session_state:
-        st.session_state.messages = [
-            {"role": "system", "content": "You are a helpful assistant."}
-        ]
+# 상태 초기화 (최초 1회만)
+if "messages" not in st.session_state:
+    st.session_state.messages = [{"role": "system", "content": "You are a helpful assistant."}]
 
-# --- GPT 응답 함수 ---
-def chat_with_gpt(messages, api_key):
+# API 키 없으면 중단
+if not api_key:
+    st.warning("🔑 API Key를 왼쪽에 입력하세요.")
+    st.stop()
+
+# GPT 응답 함수
+def chat_with_gpt(messages):
     openai.api_key = api_key
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-4",  # 또는 gpt-3.5-turbo
+            model="gpt-4",  # 또는 "gpt-3.5-turbo"
             messages=messages
         )
         return response.choices[0].message["content"]
     except Exception as e:
         return f"❌ 오류: {str(e)}"
 
-# --- 본문 ---
-st.title("💬 Chat with GPT")
-api_key = get_api_key()
-
-# API Key 없으면 중단
-if not api_key:
-    st.warning("API Key를 입력해주세요.")
-    st.stop()
-
-# 세션 상태 초기화
-init_chat()
-
-# Clear 버튼
-if st.button("🧹 Clear Chat"):
-    st.session_state.messages = [
-        {"role": "system", "content": "You are a helpful assistant."}
-    ]
-    st.experimental_rerun()
-
-# 이전 메시지 출력
-for msg in st.session_state.messages[1:]:  # system 메시지 제외
+# 대화 출력
+for msg in st.session_state.messages[1:]:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# 사용자 입력 받기
+# 사용자 입력
 user_input = st.chat_input("메시지를 입력하세요...")
 
 if user_input:
-    # 사용자 메시지 저장 및 출력
+    # 입력 저장
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user"):
         st.markdown(user_input)
 
-    # GPT 응답 얻기 및 출력
-    response = chat_with_gpt(st.session_state.messages, api_key)
+    # GPT 응답
+    response = chat_with_gpt(st.session_state.messages)
     st.session_state.messages.append({"role": "assistant", "content": response})
     with st.chat_message("assistant"):
         st.markdown(response)
+
+# Clear 버튼
+if st.sidebar.button("🧹 대화 초기화"):
+    st.session_state.messages = [{"role": "system", "content": "You are a helpful assistant."}]
+    st.rerun()
