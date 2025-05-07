@@ -442,15 +442,14 @@ if prompt := st.chat_input("도서관 규정에 대해 질문해 주세요!"):
         st.markdown(prompt)
 
     # 규정집 내용에 대한 답변 생성
-    response = openai.ChatCompletion.create(
-        model="gpt-4",  # 사용하려는 모델, gpt-3.5-turbo 또는 gpt-4로 지정
-        messages=st.session_state.messages + [
-            {"role": "system", "content": library_rules}  # 규정집 내용 제공
-        ]
+    response = openai.Completion.create(
+        model="text-davinci-003",  # text-davinci-003 모델을 사용 (구버전 모델)
+        prompt=library_rules + "\n\n" + prompt,  # 규정집 + 사용자의 질문
+        max_tokens=150  # 응답 길이 제한
     )
 
     # GPT 응답
-    assistant_reply = response.choices[0].message["content"]
+    assistant_reply = response.choices[0].text.strip()
 
     # GPT 응답 저장
     st.session_state.messages.append({"role": "assistant", "content": assistant_reply})
