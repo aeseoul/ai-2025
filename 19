@@ -22,28 +22,45 @@ def get_gpt_response(api_key, prompt):
     try:
         response = openai.Completion.create(
             model="gpt-4.1-mini"
-            prompt=prompt,
-            max_tokens=150
+            messages=messages
         )
-        return response.choices[0].text.strip()
+        return response.choices[0].message["content"]
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f"오류 발생: {e}"
 
-st.title("GPT-4.1-mini 모델 응답 웹앱")
+page = st.sidebar.selectbox("📄 페이지 선택", ["Home", "Chat"])
 
-api_key = get_openai_api_key()
+if page == "Home":
+    st.title("GPT 웹앱")
+    api_key = get_openai_api_key()
+    st.write("왼쪽 사이드바에서 **Chat** 페이지로 이동해 대화를 시작하세요.")
 
-if api_key:
-    prompt = st.text_area("질문을 입력하세요.", placeholder="질문을 입력하세요...")
-    
-    if prompt:
-        @st.cache_data
-        def get_cached_response(api_key, prompt):
-            return get_gpt_response(api_key, prompt)
-        
-        response = get_cached_response(api_key, prompt)
-        
-        st.subheader("GPT-4.1-mini 모델의 응답:")
-        st.write(response)
-else:
-    st.warning("API Key를 입력해 주세요.")
+elif page == "Chat":
+    st.title("💬 GPT Chatbot")
+    api_key = get_openai_api_key()
+
+    if not api_key:
+        st.warning("먼저 API Key를 입력하세요.")
+        st.stop()
+
+    if "messages" not in st.session_state:
+        st.session_state.messages = [{"role": "system", "content": "You are a helpful assistant."}]
+
+    for msg in st.session_state.messages[1:]:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+
+    if prompt := st.chat_input("메시지를 입력하세요..."):
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
+
+        response = get_chat_response(api_key, st.session_state.messages)
+        st.session_state.messages.append({"role": "assistant", "content": response})
+
+        with st.chat_message("assistant"):
+            st.markdown(response)
+
+    if st.button("Clear"):
+        st.session_state.messages = [{"role": "system", "content": "You are a helpful assistant."}]
+        st.experimental_rerun()
