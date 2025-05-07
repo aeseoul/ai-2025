@@ -1,59 +1,17 @@
 import streamlit as st
-import openai
-import os
+from openai import OpenAI
 
-# OpenAI API Key를 입력받는 함수
-def get_openai_api_key():
-    # session_state에서 이전에 저장된 API Key가 있다면 불러오기
-    if "api_key" not in st.session_state:
-        st.session_state.api_key = ""
+api_key= st.text_input("OpenAI API Key", type="password")
+client = OpenAI(api_key=api_key)
 
-    # API Key를 입력받을 텍스트 입력창
-    api_key = st.text_input(
-        label="OpenAI API Key 입력",
-        value=st.session_state.api_key,
-        type="password"
+st.title("OpenAI GPT model")
+
+prompt = st.text_area("User prompt")
+
+if st.button("Ask!", disabled=(len(prompt)==0)):
+    response = client.responses.create(
+        model="gpt-4.1-mini",
+        input=prompt
     )
 
-    # API Key가 입력되면 session_state에 저장
-    if api_key:
-        st.session_state.api_key = api_key
-
-    return api_key
-
-# GPT-4.1-mini 모델을 이용한 응답 생성 함수
-def get_gpt_response(api_key, prompt):
-    openai.api_key = api_key
-    try:
-        # OpenAI API를 호출하여 GPT-4.1-mini 모델로 응답 생성
-        response = openai.Completion.create(
-            model="gpt-4.1-mini",
-            prompt=prompt,
-            max_tokens=150
-        )
-        return response.choices[0].text.strip()
-    except Exception as e:
-        return f"Error: {str(e)}"
-
-# 앱 제목
-st.title("GPT-4.1-mini 모델 응답 웹앱")
-
-# OpenAI API Key 입력
-api_key = get_openai_api_key()
-
-# API Key가 입력된 후 GPT-4.1-mini 모델로 질문을 하고 응답을 받는 기능
-if api_key:
-    prompt = st.text_area("질문을 입력하세요.", placeholder="질문을 입력하세요...")
-    
-    if prompt:
-        # Cache된 데이터를 활용하여 빠르게 결과 반환
-        @st.cache_data
-        def get_cached_response(api_key, prompt):
-            return get_gpt_response(api_key, prompt)
-        
-        response = get_cached_response(api_key, prompt)
-        
-        st.subheader("GPT-4.1-mini 모델의 응답:")
-        st.write(response)
-else:
-    st.warning("API Key를 입력해 주세요.")
+    st.write(response.output_text)
