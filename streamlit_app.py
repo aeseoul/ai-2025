@@ -1,22 +1,17 @@
 import streamlit as st
 import openai
 from PyPDF2 import PdfReader
-from langchain.text_splitter import CharacterTextSplitter
-from langchain.vectorstores.faiss import FAISS
-from langchain.embeddings.openai import OpenAIEmbeddings
-from langchain.chains import ConversationalRetrievalChain
 
-st.set_page_config(page_title="통합 GPT-4.1-mini 챗봇 앱", layout="wide")
+st.set_page_config(page_title="Python 3.12 대응 GPT-4.1-mini 챗봇 앱", layout="wide")
 
-st.title("통합 GPT-4.1-mini 챗봇 앱")
+st.title("Python 3.12 대응 GPT-4.1-mini 챗봇 앱")
 
-# 사이드바 메뉴 만들기
+# 사이드바 메뉴 및 API Key 입력
 page = st.sidebar.radio(
     "메뉴 선택",
     ("GPT-4.1-mini Q&A", "Chat", "도서관 챗봇", "ChatPDF")
 )
 
-# API Key 입력 & 세션 상태 저장 (사이드바)
 if "api_key" not in st.session_state:
     st.session_state.api_key = ""
 
@@ -29,17 +24,7 @@ if not api_key:
 
 openai.api_key = api_key
 
-# 세션 상태 초기화
-if "messages_chat" not in st.session_state:
-    st.session_state.messages_chat = []
-
-if "pdf_vectors" not in st.session_state:
-    st.session_state.pdf_vectors = None
-
-if "chat_history_pdf" not in st.session_state:
-    st.session_state.chat_history_pdf = []
-
-# 부경대 도서관 규정 예시 (실제 내용으로 교체)
+# 부경대 도서관 규정 문자열 예시
 library_rules = """
 국립부경대학교 도서관 규정:
 - 휴관일: 매주 일요일 및 공휴일
@@ -48,7 +33,16 @@ library_rules = """
 ...
 """
 
-# 메뉴별 화면 전환
+# Chat용 메시지 세션 상태
+if "messages_chat" not in st.session_state:
+    st.session_state.messages_chat = []
+
+# ChatPDF용 PDF 내용 및 질문 기록
+if "pdf_text" not in st.session_state:
+    st.session_state.pdf_text = ""
+if "chat_history_pdf" not in st.session_state:
+    st.session_state.chat_history_pdf = []
+
 if page == "GPT-4.1-mini Q&A":
     st.header("GPT-4.1-mini 질문/응답")
     prompt = st.text_input("질문을 입력하세요:", key="qa_input")
@@ -113,40 +107,44 @@ elif page == "도서관 챗봇":
             st.error(f"오류 발생: {e}")
 
 elif page == "ChatPDF":
-    st.header("ChatPDF 페이지")
+    st.header("ChatPDF 페이지 - PDF 텍스트 기반 질의응답")
+
     uploaded_file = st.file_uploader("PDF 파일 업로드", type=['pdf'])
+
     if st.button("Clear PDF 데이터"):
-        st.session_state.pdf_vectors = None
+        st.session_state.pdf_text = ""
         st.session_state.chat_history_pdf = []
         st.success("PDF 데이터 및 대화 내역 초기화됨")
 
     if uploaded_file:
-        if st.session_state.pdf_vectors is None:
+        try:
             pdf_reader = PdfReader(uploaded_file)
             text = ""
-            for page in pdf_reader.pages:
-                page_text = page.extract_text()
+            for page_obj in pdf_reader.pages:
+                page_text = page_obj.extract_text()
                 if page_text:
-                    text += page_text
+                    text += page_text + "\n"
+            st.session_state.pdf_text = text
+            st.text_area("PDF 내용 미리보기", st.session_state.pdf_text, height=300)
+        except Exception as e:
+            st.error(f"PDF 읽기 오류: {e}")
 
-            text_splitter = CharacterTextSplitter(separator="\n", chunk_size=1000, chunk_overlap=200)
-            chunks = text_splitter.split_text(text)
-
-            embeddings = OpenAIEmbeddings(openai_api_key=api_key)
-            vectorstore = FAISS.from_texts(chunks, embeddings)
-
-            st.session_state.pdf_vectors = vectorstore
-            st.session_state.chat_history_pdf = []
-
+    if st.session_state.pdf_text:
         query = st.text_input("질문을 입력하세요:", key="pdf_chat_input")
-        if query and st.session_state.pdf_vectors is not None:
-            retriever = st.session_state.pdf_vectors.as_retriever()
-            # langchain OpenAI LLM 인스턴스 사용 예시 (명령어 수정을 필요할 수도 있음)
-            from langchain.llms import OpenAI
-            llm = OpenAI(temperature=0, openai_api_key=api_key, model_name="gpt-4.1-mini")
-
-            qa_chain = ConversationalRetrievalChain.from_llm(llm, retriever)
-
-            result = qa_chain.run({"question": query, "chat_history": st.session_state.chat_history_pdf})
-            st.session_state.chat_history_pdf.append((query, result))
-            st.markdown(f"**답변:** {result}")
+        if query:
+            messages = [
+                {"role": "system", "content": "아래 텍스트를 참조해서 질문에 답해주세요."},
+                {"role": "system", "content": st.session_state.pdf_text},
+                {"role": "user", "content": query},
+            ]
+            try:
+                response = openai.ChatCompletion.create(
+                    model="gpt-4.1-mini",
+                    messages=messages,
+                    max_tokens=500,
+                    temperature=0,
+                )
+                answer = response.choices[0].message.content.strip()
+                st.markdown(f"**답변:** {answer}")
+            except Exception as e:
+                st.error(f"오류 발생: {e}")
