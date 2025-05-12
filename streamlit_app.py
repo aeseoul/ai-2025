@@ -10,11 +10,17 @@ st.set_page_config(page_title="통합 GPT-4.1-mini 챗봇 앱", layout="wide")
 
 st.title("통합 GPT-4.1-mini 챗봇 앱")
 
-# API Key 입력 및 세션 상태 저장
+# 사이드바 메뉴 만들기
+page = st.sidebar.radio(
+    "메뉴 선택",
+    ("GPT-4.1-mini Q&A", "Chat", "도서관 챗봇", "ChatPDF")
+)
+
+# API Key 입력 & 세션 상태 저장 (사이드바)
 if "api_key" not in st.session_state:
     st.session_state.api_key = ""
 
-api_key = st.text_input("OpenAI API Key 입력", type="password", value=st.session_state.api_key)
+api_key = st.sidebar.text_input("OpenAI API Key 입력", type="password", value=st.session_state.api_key)
 st.session_state.api_key = api_key
 
 if not api_key:
@@ -33,7 +39,7 @@ if "pdf_vectors" not in st.session_state:
 if "chat_history_pdf" not in st.session_state:
     st.session_state.chat_history_pdf = []
 
-# 부경대 도서관 규정
+# 부경대 도서관 규정 예시 (실제 내용으로 교체)
 library_rules = """
 국립부경대학교 도서관 규정:
 - 휴관일: 매주 일요일 및 공휴일
@@ -42,10 +48,8 @@ library_rules = """
 ...
 """
 
-tab1, tab2, tab3, tab4 = st.tabs(["GPT-4.1-mini Q&A", "Chat", "도서관 챗봇", "ChatPDF"])
-
-# 1. GPT-4.1-mini Q&A
-with tab1:
+# 메뉴별 화면 전환
+if page == "GPT-4.1-mini Q&A":
     st.header("GPT-4.1-mini 질문/응답")
     prompt = st.text_input("질문을 입력하세요:", key="qa_input")
     if prompt:
@@ -61,8 +65,7 @@ with tab1:
         except Exception as e:
             st.error(f"오류 발생: {e}")
 
-# 2. Chat
-with tab2:
+elif page == "Chat":
     st.header("Chat 페이지")
     if st.button("Clear 채팅 내용"):
         st.session_state.messages_chat = []
@@ -88,8 +91,7 @@ with tab2:
         else:
             st.markdown(f"**챗봇**: {msg['content']}")
 
-# 3. 도서관 챗봇
-with tab3:
+elif page == "도서관 챗봇":
     st.header("국립부경대학교 도서관 챗봇")
     question = st.text_input("질문을 입력하세요:", key="library_input")
     if question:
@@ -110,8 +112,7 @@ with tab3:
         except Exception as e:
             st.error(f"오류 발생: {e}")
 
-# 4. ChatPDF
-with tab4:
+elif page == "ChatPDF":
     st.header("ChatPDF 페이지")
     uploaded_file = st.file_uploader("PDF 파일 업로드", type=['pdf'])
     if st.button("Clear PDF 데이터"):
@@ -140,7 +141,7 @@ with tab4:
         query = st.text_input("질문을 입력하세요:", key="pdf_chat_input")
         if query and st.session_state.pdf_vectors is not None:
             retriever = st.session_state.pdf_vectors.as_retriever()
-            # ConversationalRetrievalChain 사용 시 LLM 객체 인자로 적당히 변경 필요
+            # langchain OpenAI LLM 인스턴스 사용 예시 (명령어 수정을 필요할 수도 있음)
             from langchain.llms import OpenAI
             llm = OpenAI(temperature=0, openai_api_key=api_key, model_name="gpt-4.1-mini")
 
