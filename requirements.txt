@@ -2,4 +2,3 @@ openai
 streamlit
 PyPDF2
 langchain==0.0.271
-faiss-cpu
